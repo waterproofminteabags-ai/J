@@ -1,0 +1,1873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PokéRip Studio — 151 & Paldean Fates Pack Simulator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-studio: #090b10;
+      --panel-bg: #111622;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-studio);
+      background-image:
+        radial-gradient(circle at 15% 15%, rgba(239, 68, 68, 0.08), transparent 35%),
+        radial-gradient(circle at 85% 20%, rgba(168, 85, 247, 0.09), transparent 38%),
+        radial-gradient(circle at 50% 90%, rgba(59, 130, 246, 0.07), transparent 45%);
+      color: #f1f5f9;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    h1, h2, h3, .font-display {
+      font-family: 'Outfit', sans-serif;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0d111a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #273147;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3b4a6b;
+    }
+
+    /* ================= BOOSTER PACK STYLING ================= */
+    .pack-stage {
+      perspective: 1200px;
+    }
+
+    .booster-pack {
+      width: 268px;
+      height: 452px;
+      position: relative;
+      border-radius: 14px;
+      transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), filter 0.3s ease;
+      transform-style: preserve-3d;
+      cursor: grab;
+    }
+
+    @media (max-width: 420px) {
+      .booster-pack {
+        width: 236px;
+        height: 400px;
+      }
+    }
+
+    .booster-pack:active {
+      cursor: grabbing;
+    }
+
+    /* Crimped top and bottom edges */
+    .pack-crimp-top,
+    .pack-crimp-bottom {
+      height: 28px;
+      width: 100%;
+      background-image: repeating-linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.22) 0px,
+        rgba(255, 255, 255, 0.22) 2px,
+        rgba(0, 0, 0, 0.25) 2px,
+        rgba(0, 0, 0, 0.25) 4px
+      );
+      position: relative;
+      z-index: 5;
+    }
+
+    .pack-top-flap {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 68px;
+      z-index: 20;
+      border-top-left-radius: 12px;
+      border-top-right-radius: 12px;
+      overflow: hidden;
+      transition: transform 0.65s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.55s ease;
+      transform-origin: left center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    }
+
+    .pack-top-flap.ripped {
+      transform: translate(140px, -95px) rotate(28deg) scale(0.92);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .pack-body {
+      position: absolute;
+      top: 66px;
+      left: 0;
+      width: 100%;
+      height: calc(100% - 66px);
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
+      overflow: hidden;
+      box-shadow:
+        0 25px 50px -12px rgba(0, 0, 0, 0.75),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+      transition: transform 0.6s ease, opacity 0.5s ease;
+    }
+
+    .pack-body.opened {
+      transform: translateY(45px) scale(0.94);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Tear line guide */
+    .tear-track {
+      position: absolute;
+      top: 64px;
+      left: 0;
+      width: 100%;
+      height: 16px;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      cursor: ew-resize;
+    }
+
+    .tear-progress-bar {
+      position: absolute;
+      left: 0;
+      top: 6px;
+      height: 4px;
+      background: linear-gradient(90deg, #fde047, #ffffff, #38bdf8);
+      box-shadow: 0 0 12px #fde047;
+      border-radius: 99px;
+      width: 0%;
+      transition: width 0.05s linear;
+    }
+
+    /* Foil Sheen Overlay on Pack */
+    .pack-foil-glare {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        115deg,
+        transparent 20%,
+        rgba(255, 255, 255, 0.12) 38%,
+        rgba(255, 255, 255, 0.42) 45%,
+        rgba(255, 255, 255, 0.08) 52%,
+        transparent 70%
+      );
+      mix-blend-mode: overlay;
+      pointer-events: none;
+      z-index: 15;
+    }
+
+    /* 151 Pack Theme */
+    .theme-151-flap,
+    .theme-151-body {
+      background: linear-gradient(155deg, #ffffff 0%, #f8fafc 48%, #e2e8f0 100%);
+    }
+
+    /* Paldean Fates Pack Theme */
+    .theme-paf-flap,
+    .theme-paf-body {
+      background: linear-gradient(145deg, #1e1b4b 0%, #312e81 35%, #581c87 72%, #0f172a 100%);
+    }
+
+    /* ================= 3D CARD FLIP & HOLO EFFECTS ================= */
+    .tcg-card-slot {
+      perspective: 1100px;
+      width: 100%;
+      aspect-ratio: 2.5 / 3.5;
+      max-width: 245px;
+      margin: 0 auto;
+    }
+
+    .tcg-card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.65s cubic-bezier(0.23, 1, 0.32, 1);
+      transform-style: preserve-3d;
+      cursor: pointer;
+    }
+
+    .tcg-card-inner.is-flipped {
+      transform: rotateY(180deg);
+    }
+
+    .tcg-card-inner.is-flipped.tilting {
+      transition: transform 0.08s ease-out;
+    }
+
+    .tcg-card-face {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      border-radius: 13px;
+      overflow: hidden;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
+    }
+
+    /* Classic Blue Pokeball Card Back */
+    .tcg-card-back {
+      background: radial-gradient(circle at 50% 50%, #2563eb 0%, #1d4ed8 45%, #1e3a8a 82%, #172554 100%);
+      border: 6px solid #1e40af;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tcg-card-back::before {
+      content: "";
+      position: absolute;
+      inset: 6px;
+      border: 2px solid rgba(147, 197, 253, 0.45);
+      border-radius: 7px;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+      background-size: 10px 10px;
+    }
+
+    .tcg-card-back:hover {
+      box-shadow: 0 0 22px rgba(96, 165, 250, 0.55);
+    }
+
+    /* Card Front */
+    .tcg-card-front {
+      transform: rotateY(180deg);
+      background: #1e293b;
+      display: flex;
+      flex-direction: column;
+      padding: 7px;
+      border: 6px solid #cbd5e1; /* Silver SV border default */
+    }
+
+    .tcg-card-front.border-gold {
+      border-color: #facc15;
+      box-shadow: 0 0 25px rgba(250, 204, 21, 0.45);
+    }
+
+    .tcg-card-front.border-sir {
+      border-color: #e2e8f0;
+      box-shadow: 0 0 28px rgba(236, 72, 153, 0.5), 0 0 12px rgba(56, 189, 248, 0.5);
+    }
+
+    .tcg-card-front.border-shiny {
+      border-color: #e2e8f0;
+      box-shadow: 0 0 24px rgba(192, 132, 252, 0.48);
+    }
+
+    /* Dynamic Holographic Foil Layer */
+    .holo-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border-radius: 8px;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      z-index: 20;
+    }
+
+    .has-holo .holo-layer {
+      opacity: 0.72;
+    }
+
+    /* Reverse Holo Pattern */
+    .holo-reverse {
+      background:
+        radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, 0.55), transparent 55%),
+        repeating-linear-gradient(
+          -45deg,
+          rgba(255, 255, 255, 0.14) 0px,
+          rgba(255, 255, 255, 0.14) 3px,
+          rgba(56, 189, 248, 0.14) 3px,
+          rgba(168, 85, 247, 0.14) 6px
+        );
+      mix-blend-mode: color-dodge;
+    }
+
+    /* Rare Holo & Double Rare ex */
+    .holo-rare {
+      background:
+        radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, 0.75) 0%, rgba(125, 211, 252, 0.35) 35%, transparent 65%),
+        linear-gradient(
+          125deg,
+          rgba(255, 0, 128, 0.22),
+          rgba(255, 204, 0, 0.22),
+          rgba(0, 255, 179, 0.22),
+          rgba(0, 140, 255, 0.22),
+          rgba(180, 0, 255, 0.22)
+        );
+      mix-blend-mode: overlay;
+    }
+
+    /* Baby Shiny Sparkle Holo */
+    .holo-shiny {
+      background:
+        radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, 0.85) 0%, rgba(216, 180, 254, 0.45) 38%, transparent 68%),
+        radial-gradient(rgba(255, 255, 255, 0.75) 1px, transparent 1.5px),
+        radial-gradient(rgba(192, 132, 252, 0.7) 1px, transparent 1.5px);
+      background-size: 100% 100%, 16px 16px, 23px 23px;
+      background-position: 0 0, 0 0, 8px 11px;
+      mix-blend-mode: screen;
+    }
+
+    /* Illustration Rare & Special Illustration Rare Rainbow Texture */
+    .holo-sir {
+      background:
+        radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.25) 32%, transparent 65%),
+        conic-gradient(
+          from calc(var(--mx, 50) * 3deg) at var(--mx, 50%) var(--my, 50%),
+          rgba(255, 59, 139, 0.38),
+          rgba(255, 214, 10, 0.38),
+          rgba(52, 211, 153, 0.38),
+          rgba(56, 189, 248, 0.38),
+          rgba(168, 85, 247, 0.38),
+          rgba(255, 59, 139, 0.38)
+        );
+      mix-blend-mode: color-dodge;
+    }
+
+    /* Hyper Rare Gold Etched Foil */
+    .holo-gold {
+      background:
+        radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255, 251, 200, 0.95) 0%, rgba(250, 204, 21, 0.45) 40%, transparent 70%),
+        repeating-linear-gradient(
+          45deg,
+          rgba(253, 224, 71, 0.25) 0px,
+          rgba(253, 224, 71, 0.25) 2px,
+          rgba(217, 119, 6, 0.2) 2px,
+          rgba(217, 119, 6, 0.2) 5px
+        );
+      mix-blend-mode: color-dodge;
+    }
+
+    /* Glare specular highlight */
+    .glare-spot {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(
+        circle at var(--mx, 50%) var(--my, 50%),
+        rgba(255, 255, 255, 0.48) 0%,
+        rgba(255, 255, 255, 0.1) 28%,
+        transparent 62%
+      );
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      z-index: 25;
+      mix-blend-mode: soft-light;
+    }
+
+    .tcg-card-inner.is-flipped:hover .glare-spot {
+      opacity: 1;
+    }
+
+    /* Animations */
+    @keyframes floatPack {
+      0%, 100% { transform: translateY(0px) rotate(-0.6deg); }
+      50% { transform: translateY(-7px) rotate(0.6deg); }
+    }
+
+    .animate-pack-idle {
+      animation: floatPack 4.2s ease-in-out infinite;
+    }
+
+    @keyframes pulseHit {
+      0% { transform: scale(1); }
+      45% { transform: scale(1.06); }
+      100% { transform: scale(1); }
+    }
+
+    .big-hit-pop {
+      animation: pulseHit 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    @keyframes slideUpCard {
+      from {
+        opacity: 0;
+        transform: translateY(26px) scale(0.92);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .card-enter {
+      animation: slideUpCard 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+  <!-- Particle Canvas for Rip & Hit Celebrations -->
+  <canvas id="fx-canvas" class="fixed inset-0 pointer-events-none z-50"></canvas>
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-40 backdrop-blur-xl bg-[#090b10]/85 border-b border-white/10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+      <!-- Brand -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-500 via-amber-400 to-indigo-500 p-[2px] shadow-lg shadow-rose-500/20">
+          <div class="w-full h-full bg-[#0d111a] rounded-[10px] flex items-center justify-center">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="#f87171" stroke-width="2.2"/>
+              <path d="M3 12h18" stroke="#f8fafc" stroke-width="2.2"/>
+              <circle cx="12" cy="12" r="3" fill="#0d111a" stroke="#f8fafc" stroke-width="2.2"/>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <span class="font-display font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+            PokéRip<span class="text-rose-400">Studio</span>
+          </span>
+          <span class="hidden sm:inline-block ml-2 text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/5 text-slate-400 border border-white/10">
+            SV3.5 & SV4.5
+          </span>
+        </div>
+      </div>
+
+      <!-- View Tabs -->
+      <nav class="flex items-center bg-slate-900/90 p-1 rounded-xl border border-white/10">
+        <button id="tab-rip" onclick="switchView('rip')" class="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-gradient-to-r from-rose-500 to-indigo-600 text-white shadow">
+          Pack Ripper
+        </button>
+        <button id="tab-binder" onclick="switchView('binder')" class="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-400 hover:text-white flex items-center gap-1.5">
+          <span>My Binder</span>
+          <span id="nav-collected-badge" class="px-1.5 py-0.2 text-[11px] rounded-md bg-white/10 text-slate-200">0</span>
+        </button>
+      </nav>
+
+      <!-- Stats & Audio Controls -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <div class="hidden md:flex items-center gap-3 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-xs">
+          <div>
+            <span class="text-slate-400">Packs:</span>
+            <span id="stat-packs" class="font-bold text-white ml-1">0</span>
+          </div>
+          <div class="w-px h-3.5 bg-white/10"></div>
+          <div>
+            <span class="text-slate-400">Value:</span>
+            <span id="stat-value" class="font-bold text-emerald-400 ml-1">£0.00</span>
+          </div>
+        </div>
+
+        <!-- Lucky Charm / God Pack Toggle -->
+        <button id="btn-lucky" onclick="toggleLuckyMode()" title="Boost hit odds & God Pack chance" class="px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/10 text-xs font-semibold text-slate-300 transition flex items-center gap-1.5">
+          <span id="lucky-icon">🍀</span>
+          <span class="hidden sm:inline" id="lucky-label">Standard Odds</span>
+        </button>
+
+        <!-- Sound Toggle -->
+        <button id="btn-mute" onclick="toggleMute()" title="Toggle Sound Effects" class="p-2 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/10 text-slate-300 transition">
+          <svg id="icon-sound-on" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+          </svg>
+          <svg id="icon-sound-off" class="w-4 h-4 hidden text-rose-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= MAIN VIEW 1: PACK RIPPER ================= -->
+  <main id="view-rip" class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 flex flex-col items-center">
+
+    <!-- Set Selector Pills -->
+    <div id="set-selector-bar" class="w-full max-w-xl mb-6">
+      <div class="grid grid-cols-2 gap-3 p-1.5 rounded-2xl bg-[#111622] border border-white/10 shadow-xl">
+        <!-- 151 Set Button -->
+        <button id="select-151" onclick="selectSet('151')" class="relative overflow-hidden rounded-xl p-3 text-left transition-all border-2 border-rose-500 bg-gradient-to-br from-white/10 to-rose-500/15 shadow-lg">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-extrabold uppercase tracking-widest text-rose-400">Scarlet & Violet</span>
+            <span class="px-1.5 py-0.5 text-[10px] font-black rounded bg-white text-slate-900">MEW</span>
+          </div>
+          <div class="font-display font-black text-base sm:text-lg text-white mt-0.5">Pokémon 151</div>
+          <div class="text-[11px] text-slate-400 truncate">Charizard ex • Mew • Kanto IRs</div>
+        </button>
+
+        <!-- Paldean Fates Set Button -->
+        <button id="select-paf" onclick="selectSet('paf')" class="relative overflow-hidden rounded-xl p-3 text-left transition-all border-2 border-transparent hover:border-white/15 bg-white/[0.02]">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-extrabold uppercase tracking-widest text-purple-400">Scarlet & Violet</span>
+            <span class="px-1.5 py-0.5 text-[10px] font-black rounded bg-gradient-to-r from-purple-500 to-cyan-400 text-white">PAF</span>
+          </div>
+          <div class="font-display font-black text-base sm:text-lg text-white mt-0.5">Paldean Fates</div>
+          <div class="text-[11px] text-slate-400 truncate">Shiny Zard • Bubble Mew • Shinies</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- STAGE A: UNOPENED BOOSTER PACK -->
+    <section id="pack-stage-container" class="flex-1 flex flex-col items-center justify-center w-full py-2">
+
+      <!-- Pack Wrapper -->
+      <div class="pack-stage relative flex flex-col items-center">
+        <div id="booster-pack" class="booster-pack animate-pack-idle select-none">
+
+          <!-- Top Foil Flap (Rips Off) -->
+          <div id="pack-flap" class="pack-top-flap theme-151-flap">
+            <div class="pack-crimp-top"></div>
+            <div id="flap-accent" class="px-4 py-1.5 flex items-center justify-between">
+              <span id="flap-tag" class="text-[10px] font-black tracking-widest uppercase text-rose-600">POKÉMON TCG</span>
+              <span id="flap-cards-count" class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-900 text-white">10 CARDS</span>
+            </div>
+            <div class="pack-foil-glare"></div>
+          </div>
+
+          <!-- Interactive Swipe-to-Tear Track -->
+          <div id="tear-zone" class="tear-track group" title="Drag across or click to rip open!">
+            <div class="w-full border-t-2 border-dashed border-amber-400/80 group-hover:border-amber-300 transition"></div>
+            <div id="tear-progress" class="tear-progress-bar"></div>
+            <div id="tear-scissors" class="absolute left-2 -top-2.5 bg-slate-900/90 text-amber-300 border border-amber-400/50 rounded-full px-2 py-0.5 text-[10px] font-bold shadow-md flex items-center gap-1 pointer-events-none transition-transform">
+              <span>✂️</span>
+              <span class="hidden sm:inline">SWIPE TO RIP</span>
+            </div>
+          </div>
+
+          <!-- Main Pack Artwork Body -->
+          <div id="pack-body" class="pack-body theme-151-body flex flex-col justify-between">
+            <div class="pack-foil-glare"></div>
+
+            <!-- Dynamic Set Pack Art Container -->
+            <div id="pack-art-content" class="relative flex-1 flex flex-col items-center justify-between p-5 z-10">
+              <!-- Populated by JS based on selected set -->
+            </div>
+
+            <div class="pack-crimp-bottom"></div>
+          </div>
+
+        </div>
+
+        <!-- Action Controls Below Pack -->
+        <div class="mt-7 flex flex-col items-center gap-3">
+          <button id="btn-rip-now" onclick="triggerPackOpen()" class="group relative px-8 py-3.5 rounded-2xl font-display font-extrabold text-base tracking-wide text-white bg-gradient-to-r from-rose-500 via-amber-500 to-indigo-600 shadow-xl shadow-rose-500/25 hover:shadow-rose-500/40 hover:scale-[1.03] active:scale-[0.98] transition-all flex items-center gap-2.5">
+            <span>⚡ Rip Booster Pack</span>
+          </button>
+          <p class="text-xs text-slate-400 text-center">
+            Drag across the dotted foil line or click <span class="text-slate-200 font-semibold">Rip Booster Pack</span>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- STAGE B: REVEALED CARDS GRID -->
+    <section id="cards-stage-container" class="hidden w-full flex-col items-center">
+
+      <!-- Pack Opening Banner & Controls -->
+      <div class="w-full flex flex-wrap items-center justify-between gap-3 mb-5 p-3.5 rounded-2xl bg-[#111622] border border-white/10">
+        <div class="flex items-center gap-3">
+          <span id="opened-set-badge" class="px-2.5 py-1 rounded-lg text-xs font-extrabold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30">
+            SV: 151
+          </span>
+          <div>
+            <h2 id="pack-status-title" class="font-display font-bold text-sm sm:text-base text-white">
+              Tap cards to reveal your pulls!
+            </h2>
+            <p id="pack-status-sub" class="text-xs text-slate-400">
+              <span id="flipped-counter">0</span> / <span id="total-pack-cards">11</span> cards revealed
+            </p>
+          </div>
+        </div>
+
+        <!-- God Pack Alert Badge (Hidden unless triggered) -->
+        <div id="god-pack-banner" class="hidden px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-pink-500/20 to-purple-500/20 border border-amber-400/50 text-amber-300 text-xs font-black uppercase tracking-wider animate-pulse">
+          ✨ DEMI-GOD PACK! ✨
+        </div>
+
+        <div class="flex items-center gap-2 ml-auto">
+          <button id="btn-reveal-all" onclick="revealAllCards()" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white/10 hover:bg-white/15 text-white border border-white/10 transition">
+            Reveal All
+          </button>
+          <button id="btn-next-pack" onclick="resetToNewPack()" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-rose-500 to-indigo-600 hover:opacity-95 text-white shadow-lg transition flex items-center gap-1.5">
+            <span>Open Another Pack</span>
+            <span>→</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Pack Summary Strip (Shows once all flipped) -->
+      <div id="pack-summary-bar" class="hidden w-full mb-5 p-4 rounded-2xl bg-gradient-to-r from-emerald-950/60 via-slate-900 to-indigo-950/60 border border-emerald-500/30 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-xl">
+            💎
+          </div>
+          <div>
+            <div class="text-xs text-emerald-300 font-semibold uppercase tracking-wider">Pack Pulls Summary</div>
+            <div id="pack-best-hit-text" class="font-display font-bold text-white text-sm sm:text-base">
+              Best Pull: Charizard ex SIR
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-5">
+          <div>
+            <div class="text-[11px] text-slate-400">Pack Value</div>
+            <div id="pack-total-value" class="font-display font-black text-lg text-emerald-400">£0.00</div>
+          </div>
+          <div>
+            <div class="text-[11px] text-slate-400">New to Binder</div>
+            <div id="pack-new-count" class="font-display font-black text-lg text-sky-400">+0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 11-Card Grid (10 Cards + Basic Energy) -->
+      <div id="cards-grid" class="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5 sm:gap-4 pb-10">
+        <!-- Cards injected dynamically -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= MAIN VIEW 2: BINDER / COLLECTION ================= -->
+  <main id="view-binder" class="hidden flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+
+    <!-- Binder Header & Stats -->
+    <div class="p-5 rounded-2xl bg-[#111622] border border-white/10 mb-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 class="font-display font-black text-2xl text-white">Collector's Master Binder</h1>
+          <p class="text-xs sm:text-sm text-slate-400 mt-0.5">Click any collected card to inspect its holographic foil up close.</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="px-4 py-2 rounded-xl bg-slate-900 border border-white/10">
+            <div class="text-[11px] text-slate-400">Set Completion</div>
+            <div id="binder-completion-text" class="font-display font-extrabold text-base text-white">0 / 0 (0%)</div>
+          </div>
+          <div class="px-4 py-2 rounded-xl bg-slate-900 border border-white/10">
+            <div class="text-[11px] text-slate-400">Binder Value</div>
+            <div id="binder-value-text" class="font-display font-extrabold text-base text-emerald-400">£0.00</div>
+          </div>
+          <button onclick="openResetModal()" class="px-3.5 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/25 text-xs font-bold transition">
+            Reset Data
+          </button>
+        </div>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden mt-4 border border-white/5">
+        <div id="binder-progress-bar" class="h-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400 transition-all duration-500" style="width: 0%"></div>
+      </div>
+
+      <!-- Filter Controls -->
+      <div class="flex flex-wrap items-center justify-between gap-3 mt-5 pt-4 border-t border-white/10">
+        <div class="flex items-center gap-2">
+          <button id="filter-set-all" onclick="setBinderFilter('all')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-900">All Sets</button>
+          <button id="filter-set-151" onclick="setBinderFilter('151')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 text-slate-300 hover:bg-white/10">Pokémon 151</button>
+          <button id="filter-set-paf" onclick="setBinderFilter('paf')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 text-slate-300 hover:bg-white/10">Paldean Fates</button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <select id="binder-rarity-filter" onchange="renderBinder()" class="bg-slate-900 border border-white/10 text-xs text-slate-200 rounded-lg px-3 py-1.5 focus:outline-none">
+            <option value="all">All Rarities</option>
+            <option value="hits">Chase Hits Only (IR / Shiny / SIR / Gold)</option>
+            <option value="owned">Collected Only</option>
+            <option value="missing">Missing Only</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Binder Card Grid -->
+    <div id="binder-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 pb-12">
+      <!-- Binder slots injected dynamically -->
+    </div>
+  </main>
+
+  <!-- ================= CARD INSPECTION MODAL ================= -->
+  <div id="inspect-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-4" onclick="closeInspectModal(event)">
+    <div class="relative max-w-md w-full bg-[#121826] border border-white/15 rounded-3xl p-6 flex flex-col items-center shadow-2xl" onclick="event.stopPropagation()">
+      <button onclick="closeInspectModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-sm font-bold">
+        ✕
+      </button>
+
+      <div id="inspect-rarity-pill" class="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mb-4 bg-amber-500/20 text-amber-300 border border-amber-400/40">
+        Special Illustration Rare
+      </div>
+
+      <!-- Large Interactive Card Container -->
+      <div id="inspect-card-mount" class="w-64 sm:w-72"></div>
+
+      <div class="w-full mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-sm">
+        <div>
+          <div id="inspect-card-name" class="font-display font-bold text-white text-lg">Charizard ex</div>
+          <div id="inspect-card-meta" class="text-xs text-slate-400">SV: 151 • #199/165</div>
+        </div>
+        <div class="text-right">
+          <div class="text-xs text-slate-400">Est. Value</div>
+          <div id="inspect-card-price" class="font-display font-black text-emerald-400 text-lg">£145.00</div>
+        </div>
+      </div>
+      <p class="text-[11px] text-slate-400 mt-3">Move your cursor or finger across the card to tilt the foil</p>
+    </div>
+  </div>
+
+  <!-- ================= CUSTOM CONFIRMATION MODAL (No confirm()) ================= -->
+  <div id="reset-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="max-w-sm w-full bg-[#131926] border border-white/15 rounded-2xl p-6 shadow-2xl">
+      <h3 class="font-display font-bold text-lg text-white">Reset Binder & Stats?</h3>
+      <p class="text-xs sm:text-sm text-slate-400 mt-2">
+        This will clear all your collected cards, pack count, and total collection value from this browser.
+      </p>
+      <div class="flex items-center justify-end gap-2.5 mt-6">
+        <button onclick="closeResetModal()" class="px-4 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/15 text-slate-200">
+          Cancel
+        </button>
+        <button onclick="confirmResetData()" class="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white">
+          Yes, Reset Everything
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ============================================================================
+       1. WEB AUDIO SYNTHESIZER (CRISP FOIL RIP, CARD FLIP, HIT CHIMES)
+       ============================================================================ */
+    class SoundFX {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      // Foil tear noise burst
+      playRip() {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const duration = 0.42;
+        const bufferSize = this.ctx.sampleRate * duration;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          const env = Math.sin((i / bufferSize) * Math.PI);
+          data[i] = (Math.random() * 2 - 1) * env * (i % 180 < 90 ? 1 : 0.45);
+        }
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(2400, this.ctx.currentTime);
+        filter.frequency.exponentialRampToValueAtTime(5200, this.ctx.currentTime + duration);
+        filter.Q.value = 1.6;
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.32, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        noise.start();
+      }
+
+      // Crisp card snap/flip sound
+      playFlip(isSpecial = false) {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(isSpecial ? 420 : 280, now);
+        osc.frequency.exponentialRampToValueAtTime(isSpecial ? 880 : 540, now + 0.09);
+
+        gain.gain.setValueAtTime(0.16, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.11);
+      }
+
+      // Celebratory chord arpeggio for IR / Shiny / SIR / Gold hits
+      playHitFanfare(tier = 'high') {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const notes = tier === 'ultra'
+          ? [523.25, 659.25, 783.99, 1046.50, 1318.51] // C5 E5 G5 C6 E6
+          : [440, 554.37, 659.25, 880]; // A4 C#5 E5 A5
+
+        notes.forEach((freq, idx) => {
+          const start = this.ctx.currentTime + idx * 0.065;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, start);
+
+          gain.gain.setValueAtTime(0.001, start);
+          gain.gain.linearRampToValueAtTime(0.15, start + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0008, start + 0.55);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(start);
+          osc.stop(start + 0.58);
+        });
+      }
+    }
+
+    const sfx = new SoundFX();
+
+    /* ============================================================================
+       2. PARTICLE FX ENGINE (SPARKLES & FOIL SHARDS)
+       ============================================================================ */
+    const fxCanvas = document.getElementById('fx-canvas');
+    const fxCtx = fxCanvas.getContext('2d');
+    let particles = [];
+
+    function resizeFxCanvas() {
+      fxCanvas.width = window.innerWidth;
+      fxCanvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeFxCanvas);
+    resizeFxCanvas();
+
+    function spawnParticles(x, y, count = 28, palette = ['#fde047', '#f43f5e', '#38bdf8', '#ffffff']) {
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2 + Math.random() * 6.5;
+        particles.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 1.5,
+          size: 3 + Math.random() * 5,
+          color: palette[Math.floor(Math.random() * palette.length)],
+          alpha: 1,
+          decay: 0.016 + Math.random() * 0.018,
+          rot: Math.random() * 360,
+          vRot: (Math.random() - 0.5) * 12
+        });
+      }
+    }
+
+    function updateParticles() {
+      fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.14; // subtle gravity
+        p.alpha -= p.decay;
+        p.rot += p.vRot;
+
+        if (p.alpha <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        fxCtx.save();
+        fxCtx.globalAlpha = p.alpha;
+        fxCtx.translate(p.x, p.y);
+        fxCtx.rotate((p.rot * Math.PI) / 180);
+        fxCtx.fillStyle = p.color;
+        fxCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.65);
+        fxCtx.restore();
+      }
+      requestAnimationFrame(updateParticles);
+    }
+    requestAnimationFrame(updateParticles);
+
+    /* ============================================================================
+       3. CURATED POKÉMON TCG CARD DATABASE (151 & PALDEAN FATES)
+       ============================================================================ */
+    const TYPE_STYLES = {
+      Fire:      { bg: 'from-orange-600 via-red-600 to-amber-800', badge: '#ef4444', icon: '🔥' },
+      Water:     { bg: 'from-sky-500 via-blue-600 to-indigo-900', badge: '#3b82f6', icon: '💧' },
+      Grass:     { bg: 'from-emerald-500 via-green-600 to-teal-900', badge: '#10b981', icon: '🌿' },
+      Lightning: { bg: 'from-yellow-400 via-amber-500 to-yellow-800', badge: '#eab308', icon: '⚡' },
+      Psychic:   { bg: 'from-purple-500 via-fuchsia-600 to-indigo-950', badge: '#a855f7', icon: '🔮' },
+      Fighting:  { bg: 'from-amber-700 via-orange-800 to-stone-900', badge: '#d97706', icon: '🥊' },
+      Darkness:  { bg: 'from-slate-700 via-zinc-800 to-neutral-950', badge: '#475569', icon: '🌙' },
+      Metal:     { bg: 'from-slate-400 via-zinc-500 to-slate-800', badge: '#94a3b8', icon: '⚙️' },
+      Dragon:    { bg: 'from-amber-500 via-yellow-600 to-stone-900', badge: '#ca8a04', icon: '🐉' },
+      Colorless: { bg: 'from-slate-300 via-slate-400 to-slate-700', badge: '#cbd5e1', icon: '⭐' },
+      Trainer:   { bg: 'from-rose-500 via-pink-600 to-slate-900', badge: '#f43f5e', icon: '🧢' }
+    };
+
+    const RARITY_META = {
+      'Common':                    { symbol: '●', label: 'Common', holo: null, border: '', tier: 1 },
+      'Uncommon':                  { symbol: '◆', label: 'Uncommon', holo: null, border: '', tier: 2 },
+      'Reverse Holo':              { symbol: '◈', label: 'Reverse Holo', holo: 'holo-reverse', border: '', tier: 3 },
+      'Rare Holo':                 { symbol: '★', label: 'Holo Rare', holo: 'holo-rare', border: '', tier: 4 },
+      'Double Rare':               { symbol: '★★', label: 'Double Rare ex', holo: 'holo-rare', border: 'border-shiny', tier: 5 },
+      'Shiny Rare':                { symbol: '✦', label: 'Baby Shiny', holo: 'holo-shiny', border: 'border-shiny', tier: 6 },
+      'Ultra Rare':                { symbol: '★★', label: 'Ultra Rare', holo: 'holo-rare', border: 'border-shiny', tier: 6 },
+      'Illustration Rare':         { symbol: '★', label: 'Illustration Rare', holo: 'holo-sir', border: 'border-sir', tier: 7 },
+      'Special Illustration Rare': { symbol: '★★', label: 'Special Illustration Rare', holo: 'holo-sir', border: 'border-sir', tier: 8 },
+      'Hyper Rare':                { symbol: '★★★', label: 'Hyper Rare (Gold)', holo: 'holo-gold', border: 'border-gold', tier: 9 }
+    };
+
+    // Rich Curated Card Pool
+    const CARD_DATABASE = [
+      // ==================== SCARLET & VIOLET: 151 ====================
+      // Commons
+      { id: '151-001', set: '151', num: '001/165', name: 'Bulbasaur', type: 'Grass', hp: 70, rarity: 'Common', price: 0.25, move: 'Vine Whip', dmg: '20', glyph: '🌱' },
+      { id: '151-004', set: '151', num: '004/165', name: 'Charmander', type: 'Fire', hp: 70, rarity: 'Common', price: 0.30, move: 'Ember', dmg: '30', glyph: '🦎' },
+      { id: '151-007', set: '151', num: '007/165', name: 'Squirtle', type: 'Water', hp: 60, rarity: 'Common', price: 0.25, move: 'Water Gun', dmg: '20', glyph: '🐢' },
+      { id: '151-025', set: '151', num: '025/165', name: 'Pikachu', type: 'Lightning', hp: 60, rarity: 'Common', price: 0.45, move: 'Pika Bolt', dmg: '30', glyph: '⚡' },
+      { id: '151-039', set: '151', num: '039/165', name: 'Jigglypuff', type: 'Psychic', hp: 70, rarity: 'Common', price: 0.20, move: 'Sing', dmg: '10', glyph: '🎤' },
+      { id: '151-052', set: '151', num: '052/165', name: 'Meowth', type: 'Colorless', hp: 70, rarity: 'Common', price: 0.20, move: 'Pay Day', dmg: '20', glyph: '🪙' },
+      { id: '151-054', set: '151', num: '054/165', name: 'Psyduck', type: 'Water', hp: 70, rarity: 'Common', price: 0.25, move: 'Headache', dmg: '20', glyph: '🦆' },
+      { id: '151-058', set: '151', num: '058/165', name: 'Growlithe', type: 'Fire', hp: 80, rarity: 'Common', price: 0.25, move: 'Flame Cloak', dmg: '30', glyph: '🐕' },
+      { id: '151-063', set: '151', num: '063/165', name: 'Abra', type: 'Psychic', hp: 50, rarity: 'Common', price: 0.20, move: 'Teleport', dmg: '—', glyph: '🥄' },
+      { id: '151-092', set: '151', num: '092/165', name: 'Gastly', type: 'Psychic', hp: 50, rarity: 'Common', price: 0.25, move: 'Nightmare', dmg: '20', glyph: '👻' },
+      { id: '151-129', set: '151', num: '129/165', name: 'Magikarp', type: 'Water', hp: 30, rarity: 'Common', price: 0.25, move: 'Splash', dmg: '10', glyph: '🐟' },
+      { id: '151-133', set: '151', num: '133/165', name: 'Eevee', type: 'Colorless', hp: 70, rarity: 'Common', price: 0.40, move: 'Colorful Friends', dmg: '—', glyph: '🦊' },
+
+      // Uncommons
+      { id: '151-002', set: '151', num: '002/165', name: 'Ivysaur', type: 'Grass', hp: 100, rarity: 'Uncommon', price: 0.35, move: 'Razor Leaf', dmg: '60', glyph: '🌺' },
+      { id: '151-005', set: '151', num: '005/165', name: 'Charmeleon', type: 'Fire', hp: 100, rarity: 'Uncommon', price: 0.40, move: 'Combustion', dmg: '50', glyph: '🔥' },
+      { id: '151-008', set: '151', num: '008/165', name: 'Wartortle', type: 'Water', hp: 100, rarity: 'Uncommon', price: 0.35, move: 'Wave Splash', dmg: '50', glyph: '🌊' },
+      { id: '151-093', set: '151', num: '093/165', name: 'Haunter', type: 'Psychic', hp: 80, rarity: 'Uncommon', price: 0.35, move: 'Spooky Shot', dmg: '40', glyph: '👾' },
+      { id: '151-143', set: '151', num: '143/165', name: 'Snorlax', type: 'Colorless', hp: 150, rarity: 'Uncommon', price: 0.75, move: 'Thumping Snore', dmg: '130', glyph: '💤' },
+      { id: '151-148', set: '151', num: '148/165', name: 'Dragonair', type: 'Dragon', hp: 100, rarity: 'Uncommon', price: 0.40, move: 'Dragon Pulse', dmg: '70', glyph: '🐍' },
+      { id: '151-158', set: '151', num: '158/165', name: 'Daisy’s Help', type: 'Trainer', hp: null, rarity: 'Uncommon', price: 0.30, move: 'Supporter', dmg: 'Draw 2', glyph: '💌' },
+
+      // Rare Holos
+      { id: '151-094', set: '151', num: '094/165', name: 'Gengar', type: 'Psychic', hp: 130, rarity: 'Rare Holo', price: 1.50, move: 'Poltergeist', dmg: '50×', glyph: '😈' },
+      { id: '151-130', set: '151', num: '130/165', name: 'Gyarados', type: 'Water', hp: 180, rarity: 'Rare Holo', price: 1.25, move: 'Hyper Beam', dmg: '130', glyph: '🐲' },
+      { id: '151-132', set: '151', num: '132/165', name: 'Ditto', type: 'Colorless', hp: 60, rarity: 'Rare Holo', price: 1.40, move: 'Transformative Start', dmg: '—', glyph: '🫠' },
+      { id: '151-149', set: '151', num: '149/165', name: 'Dragonite', type: 'Dragon', hp: 180, rarity: 'Rare Holo', price: 1.80, move: 'Dragon Pulse', dmg: '180', glyph: '🐉' },
+      { id: '151-150', set: '151', num: '150/165', name: 'Mewtwo', type: 'Psychic', hp: 130, rarity: 'Rare Holo', price: 2.20, move: 'Reflective Barrier', dmg: '100', glyph: '🧬' },
+
+      // Double Rares (ex)
+      { id: '151-003', set: '151', num: '003/165', name: 'Venusaur ex', type: 'Grass', hp: 340, rarity: 'Double Rare', price: 3.50, move: 'Dangerous Toxins', dmg: '150', glyph: '🌴' },
+      { id: '151-006', set: '151', num: '006/165', name: 'Charizard ex', type: 'Fire', hp: 330, rarity: 'Double Rare', price: 6.50, move: 'Explosive Vortex', dmg: '330', glyph: '🔥' },
+      { id: '151-009', set: '151', num: '009/165', name: 'Blastoise ex', type: 'Water', hp: 330, rarity: 'Double Rare', price: 4.00, move: 'Twin Cannons', dmg: '140×', glyph: ' cannons' === 'x' ? '' : '🌊' },
+      { id: '151-151', set: '151', num: '151/165', name: 'Mew ex', type: 'Psychic', hp: 180, rarity: 'Double Rare', price: 7.50, move: 'Genome Hacking', dmg: 'Copy', glyph: '✨' },
+
+      // Ultra Rares (Full Art)
+      { id: '151-183', set: '151', num: '183/165', name: 'Charizard ex (FA)', type: 'Fire', hp: 330, rarity: 'Ultra Rare', price: 32.00, move: 'Explosive Vortex', dmg: '330', glyph: '🔥' },
+      { id: '151-193', set: '151', num: '193/165', name: 'Mew ex (Full Art)', type: 'Psychic', hp: 180, rarity: 'Ultra Rare', price: 19.50, move: 'Genome Hacking', dmg: 'Copy', glyph: '🌸' },
+
+      // Illustration Rares (IR)
+      { id: '151-166', set: '151', num: '166/165', name: 'Bulbasaur (IR)', type: 'Grass', hp: 70, rarity: 'Illustration Rare', price: 24.00, move: 'Vine Whip', dmg: '20', glyph: '🌱' },
+      { id: '151-167', set: '151', num: '167/165', name: 'Ivysaur (IR)', type: 'Grass', hp: 100, rarity: 'Illustration Rare', price: 21.00, move: 'Razor Leaf', dmg: '60', glyph: '🌺' },
+      { id: '151-168', set: '151', num: '168/165', name: 'Charmander (IR)', type: 'Fire', hp: 70, rarity: 'Illustration Rare', price: 36.00, move: 'Ember', dmg: '30', glyph: '🦎' },
+      { id: '151-169', set: '151', num: '169/165', name: 'Charmeleon (IR)', type: 'Fire', hp: 100, rarity: 'Illustration Rare', price: 25.00, move: 'Combustion', dmg: '50', glyph: '🔥' },
+      { id: '151-170', set: '151', num: '170/165', name: 'Squirtle (IR)', type: 'Water', hp: 60, rarity: 'Illustration Rare', price: 28.00, move: 'Water Gun', dmg: '20', glyph: '🐢' },
+      { id: '151-171', set: '151', num: '171/165', name: 'Wartortle (IR)', type: 'Water', hp: 100, rarity: 'Illustration Rare', price: 22.00, move: 'Wave Splash', dmg: '50', glyph: '🌊' },
+      { id: '151-173', set: '151', num: '173/165', name: 'Pikachu (IR)', type: 'Lightning', hp: 60, rarity: 'Illustration Rare', price: 26.00, move: 'Pika Bolt', dmg: '30', glyph: '⚡' },
+      { id: '151-176', set: '151', num: '176/165', name: 'Poliwhirl (IR)', type: 'Water', hp: 90, rarity: 'Illustration Rare', price: 14.50, move: 'Hypno Splash', dmg: '30', glyph: '🌀' },
+      { id: '151-181', set: '151', num: '181/165', name: 'Dragonair (IR)', type: 'Dragon', hp: 100, rarity: 'Illustration Rare', price: 18.00, move: 'Dragon Pulse', dmg: '70', glyph: '🐍' },
+
+      // Special Illustration Rares (SIR)
+      { id: '151-198', set: '151', num: '198/165', name: 'Venusaur ex (SIR)', type: 'Grass', hp: 340, rarity: 'Special Illustration Rare', price: 54.00, move: 'Dangerous Toxins', dmg: '150', glyph: '🌴' },
+      { id: '151-199', set: '151', num: '199/165', name: 'Charizard ex (SIR)', type: 'Fire', hp: 330, rarity: 'Special Illustration Rare', price: 155.00, move: 'Explosive Vortex', dmg: '330', glyph: '🐉' },
+      { id: '151-200', set: '151', num: '200/165', name: 'Blastoise ex (SIR)', type: 'Water', hp: 330, rarity: 'Special Illustration Rare', price: 62.00, move: 'Twin Cannons', dmg: '140×', glyph: '🐢' },
+      { id: '151-201', set: '151', num: '201/165', name: 'Alakazam ex (SIR)', type: 'Psychic', hp: 310, rarity: 'Special Illustration Rare', price: 38.00, move: 'Dimensional Hand', dmg: '120', glyph: '🥄' },
+      { id: '151-202', set: '151', num: '202/165', name: 'Zapdos ex (SIR)', type: 'Lightning', hp: 200, rarity: 'Special Illustration Rare', price: 48.00, move: 'Multishot Lightning', dmg: '120', glyph: '🦅' },
+      { id: '151-203', set: '151', num: '203/165', name: 'Erika’s Invitation (SIR)', type: 'Trainer', hp: null, rarity: 'Special Illustration Rare', price: 24.00, move: 'Supporter', dmg: 'Charm', glyph: '👘' },
+
+      // Hyper Rare (Gold)
+      { id: '151-205', set: '151', num: '205/165', name: 'Mew ex (Hyper Gold)', type: 'Psychic', hp: 180, rarity: 'Hyper Rare', price: 14.00, move: 'Genome Hacking', dmg: 'Copy', glyph: '👑' },
+      { id: '151-206', set: '151', num: '206/165', name: 'Switch (Hyper Gold)', type: 'Trainer', hp: null, rarity: 'Hyper Rare', price: 7.50, move: 'Item', dmg: 'Swap', glyph: '🔄' },
+
+
+      // ==================== SCARLET & VIOLET: PALDEAN FATES ====================
+      // Commons
+      { id: 'paf-007', set: 'paf', num: '007/091', name: 'Charmander', type: 'Fire', hp: 60, rarity: 'Common', price: 0.25, move: 'Blazing Destruction', dmg: '—', glyph: '🦎' },
+      { id: 'paf-017', set: 'paf', num: '017/091', name: 'Pikachu', type: 'Lightning', hp: 70, rarity: 'Common', price: 0.35, move: 'Growl', dmg: '—', glyph: '⚡' },
+      { id: 'paf-022', set: 'paf', num: '022/091', name: 'Pawmi', type: 'Lightning', hp: 50, rarity: 'Common', price: 0.20, move: 'Tiny Charge', dmg: '10', glyph: '🐹' },
+      { id: 'paf-031', set: 'paf', num: '031/091', name: 'Ralts', type: 'Psychic', hp: 70, rarity: 'Common', price: 0.20, move: 'Memory Skip', dmg: '10', glyph: '🎀' },
+      { id: 'paf-037', set: 'paf', num: '037/091', name: 'Mimikyu', type: 'Psychic', hp: 70, rarity: 'Common', price: 0.45, move: 'Ghost Eye', dmg: '70', glyph: '👻' },
+      { id: 'paf-040', set: 'paf', num: '040/091', name: 'Greavard', type: 'Psychic', hp: 70, rarity: 'Common', price: 0.20, move: 'Underworld Stroll', dmg: '—', glyph: '🕯️' },
+      { id: 'paf-046', set: 'paf', num: '046/091', name: 'Mankey', type: 'Fighting', hp: 60, rarity: 'Common', price: 0.20, move: 'Monkey Beatdown', dmg: '30×', glyph: '🐒' },
+      { id: 'paf-057', set: 'paf', num: '057/091', name: 'Wooper', type: 'Darkness', hp: 60, rarity: 'Common', price: 0.25, move: 'Poison Gas', dmg: '10', glyph: '🫧' },
+      { id: 'paf-071', set: 'paf', num: '071/091', name: 'Lechonk', type: 'Colorless', hp: 70, rarity: 'Common', price: 0.20, move: 'Ram', dmg: '20', glyph: '🐖' },
+
+      // Uncommons
+      { id: 'paf-008', set: 'paf', num: '008/091', name: 'Charmeleon', type: 'Fire', hp: 90, rarity: 'Uncommon', price: 0.35, move: 'Flamethrower', dmg: '70', glyph: '🔥' },
+      { id: 'paf-032', set: 'paf', num: '032/091', name: 'Kirlia', type: 'Psychic', hp: 80, rarity: 'Uncommon', price: 0.40, move: 'Refinement', dmg: 'Draw', glyph: '🩰' },
+      { id: 'paf-080', set: 'paf', num: '080/091', name: 'Iono', type: 'Trainer', hp: null, rarity: 'Uncommon', price: 0.65, move: 'Supporter', dmg: 'Shuffle', glyph: '🎥' },
+      { id: 'paf-084', set: 'paf', num: '084/091', name: 'Nest Ball', type: 'Trainer', hp: null, rarity: 'Uncommon', price: 0.50, move: 'Item', dmg: 'Search', glyph: '🟢' },
+      { id: 'paf-089', set: 'paf', num: '089/091', name: 'Rare Candy', type: 'Trainer', hp: null, rarity: 'Uncommon', price: 0.45, move: 'Item', dmg: 'Evolve', glyph: '🍬' },
+
+      // Rare Holos
+      { id: 'paf-015', set: 'paf', num: '015/091', name: 'Armarouge', type: 'Fire', hp: 130, rarity: 'Rare Holo', price: 0.90, move: 'Flame Cannon', dmg: '90', glyph: '🛡️' },
+      { id: 'paf-045', set: 'paf', num: '045/091', name: 'Ceruledge', type: 'Psychic', hp: 140, rarity: 'Rare Holo', price: 1.10, move: 'Life Siphon', dmg: '100', glyph: '⚔️' },
+      { id: 'paf-068', set: 'paf', num: '068/091', name: 'Gholdengo', type: 'Metal', hp: 130, rarity: 'Rare Holo', price: 1.00, move: 'Make It Rain', dmg: '30×', glyph: '🪙' },
+
+      // Double Rares (ex)
+      { id: 'paf-054', set: 'paf', num: '054/091', name: 'Charizard ex (Dark)', type: 'Darkness', hp: 330, rarity: 'Double Rare', price: 5.50, move: 'Burning Darkness', dmg: '180+', glyph: '🖤' },
+      { id: 'paf-029', set: 'paf', num: '029/091', name: 'Gardevoir ex', type: 'Psychic', hp: 310, rarity: 'Double Rare', price: 2.50, move: 'Miracle Force', dmg: '190', glyph: '👗' },
+      { id: 'paf-053', set: 'paf', num: '053/091', name: 'Mew ex', type: 'Psychic', hp: 180, rarity: 'Double Rare', price: 4.50, move: 'Genome Hacking', dmg: 'Copy', glyph: '✨' },
+
+      // Baby Shinies (Iconic Paldean Fates Slot!)
+      { id: 'paf-109', set: 'paf', num: '109/091', name: 'Shiny Charmander', type: 'Fire', hp: 60, rarity: 'Shiny Rare', price: 26.00, move: 'Blazing Destruction', dmg: '—', glyph: '✨🦎' },
+      { id: 'paf-110', set: 'paf', num: '110/091', name: 'Shiny Charmeleon', type: 'Fire', hp: 90, rarity: 'Shiny Rare', price: 16.00, move: 'Flamethrower', dmg: '70', glyph: '✨🔥' },
+      { id: 'paf-131', set: 'paf', num: '131/091', name: 'Shiny Pikachu', type: 'Lightning', hp: 70, rarity: 'Shiny Rare', price: 32.00, move: 'Pika Bolt', dmg: '30', glyph: '✨⚡' },
+      { id: 'paf-154', set: 'paf', num: '154/091', name: 'Shiny Ralts', type: 'Psychic', hp: 70, rarity: 'Shiny Rare', price: 9.50, move: 'Memory Skip', dmg: '10', glyph: '✨🎀' },
+      { id: 'paf-160', set: 'paf', num: '160/091', name: 'Shiny Mimikyu', type: 'Psychic', hp: 70, rarity: 'Shiny Rare', price: 15.00, move: 'Ghost Eye', dmg: '70', glyph: '✨👻' },
+      { id: 'paf-167', set: 'paf', num: '167/091', name: 'Shiny Tinkaton', type: 'Psychic', hp: 140, rarity: 'Shiny Rare', price: 8.50, move: 'Big Hammer', dmg: '30×', glyph: '✨🔨' },
+      { id: 'paf-174', set: 'paf', num: '174/091', name: 'Shiny Lucario', type: 'Fighting', hp: 130, rarity: 'Shiny Rare', price: 14.00, move: 'Aura Sphere', dmg: '120', glyph: '✨🐺' },
+      { id: 'paf-201', set: 'paf', num: '201/091', name: 'Shiny Ditto', type: 'Colorless', hp: 60, rarity: 'Shiny Rare', price: 12.00, move: 'Transformative Start', dmg: '—', glyph: '✨💧' },
+      { id: 'paf-204', set: 'paf', num: '204/091', name: 'Shiny Snorlax', type: 'Colorless', hp: 150, rarity: 'Shiny Rare', price: 18.00, move: 'Thumping Snore', dmg: '130', glyph: '✨💤' },
+
+      // Illustration Rares (PAF)
+      { id: 'paf-226', set: 'paf', num: '226/091', name: 'Wugtrio (IR)', type: 'Water', hp: 90, rarity: 'Illustration Rare', price: 3.00, move: 'Undersea Tunnel', dmg: '60×', glyph: '🪱' },
+      { id: 'paf-227', set: 'paf', num: '227/091', name: 'Palafin (IR)', type: 'Water', hp: 150, rarity: 'Illustration Rare', price: 3.50, move: 'Justice Kick', dmg: '210', glyph: '🐬' },
+      { id: 'paf-228', set: 'paf', num: '228/091', name: 'Pawmi (IR)', type: 'Lightning', hp: 50, rarity: 'Illustration Rare', price: 2.80, move: 'Tiny Charge', dmg: '10', glyph: '🐹' },
+
+      // Special Illustration Rares (PAF Chase!)
+      { id: 'paf-232', set: 'paf', num: '232/091', name: 'Mew ex (Bubble Mew)', type: 'Psychic', hp: 180, rarity: 'Special Illustration Rare', price: 165.00, move: 'Genome Hacking', dmg: 'Copy', glyph: '🫧✨' },
+      { id: 'paf-233', set: 'paf', num: '233/091', name: 'Gardevoir ex (SIR)', type: 'Psychic', hp: 310, rarity: 'Special Illustration Rare', price: 58.00, move: 'Miracle Force', dmg: '190', glyph: '👑👗' },
+      { id: 'paf-234', set: 'paf', num: '234/091', name: 'Shiny Charizard ex (SIR)', type: 'Darkness', hp: 330, rarity: 'Special Illustration Rare', price: 145.00, move: 'Burning Darkness', dmg: '180+', glyph: '🖤🔥' },
+      { id: 'paf-237', set: 'paf', num: '237/091', name: 'Iono (SIR)', type: 'Trainer', hp: null, rarity: 'Special Illustration Rare', price: 34.00, move: 'Supporter', dmg: 'Shuffle', glyph: '⚡🎥' },
+      { id: 'paf-238', set: 'paf', num: '238/091', name: 'Penny (SIR)', type: 'Trainer', hp: null, rarity: 'Special Illustration Rare', price: 16.00, move: 'Supporter', dmg: 'Recall', glyph: '🎒' },
+
+      // Hyper Rares (Gold)
+      { id: 'paf-242', set: 'paf', num: '242/091', name: 'Koraidon ex (Hyper Gold)', type: 'Fighting', hp: 230, rarity: 'Hyper Rare', price: 12.00, move: 'Wild Impact', dmg: '220', glyph: '🦖' },
+      { id: 'paf-243', set: 'paf', num: '243/091', name: 'Miraidon ex (Hyper Gold)', type: 'Lightning', hp: 220, rarity: 'Hyper Rare', price: 13.50, move: 'Photon Blaster', dmg: '220', glyph: '🤖' }
+    ];
+
+    const BASIC_ENERGIES = [
+      { name: 'Basic Fire Energy', type: 'Fire', glyph: '🔥' },
+      { name: 'Basic Water Energy', type: 'Water', glyph: '💧' },
+      { name: 'Basic Grass Energy', type: 'Grass', glyph: '🌿' },
+      { name: 'Basic Lightning Energy', type: 'Lightning', glyph: '⚡' },
+      { name: 'Basic Psychic Energy', type: 'Psychic', glyph: '🔮' },
+      { name: 'Basic Fighting Energy', type: 'Fighting', glyph: '🥊' },
+      { name: 'Basic Darkness Energy', type: 'Darkness', glyph: '🌙' },
+      { name: 'Basic Metal Energy', type: 'Metal', glyph: '⚙️' }
+    ];
+
+    /* ============================================================================
+       4. APPLICATION STATE & LOCALSTORAGE PERSISTENCE
+       ============================================================================ */
+    const STORAGE_KEY = 'pokerip_studio_save_v1';
+
+    let state = {
+      currentSet: '151',
+      luckyMode: false,
+      packsOpened: 0,
+      collection: {}, // { [cardId]: count }
+      binderSetFilter: 'all',
+      currentPack: [],
+      flippedIndices: new Set(),
+      isOpening: false
+    };
+
+    function loadSaveData() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          state.packsOpened = parsed.packsOpened || 0;
+          state.collection = parsed.collection || {};
+        }
+      } catch (err) {
+        console.warn('Could not load saved collection:', err);
+      }
+      updateHeaderStats();
+    }
+
+    function saveProgress() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          packsOpened: state.packsOpened,
+          collection: state.collection
+        }));
+      } catch (err) {
+        console.warn('Could not persist collection:', err);
+      }
+      updateHeaderStats();
+    }
+
+    function updateHeaderStats() {
+      document.getElementById('stat-packs').textContent = state.packsOpened;
+
+      let totalValue = 0;
+      let uniqueCount = 0;
+      for (const card of CARD_DATABASE) {
+        const qty = state.collection[card.id] || 0;
+        if (qty > 0) {
+          uniqueCount++;
+          totalValue += card.price * qty;
+        }
+      }
+
+      document.getElementById('stat-value').textContent = `£${totalValue.toFixed(2)}`;
+      document.getElementById('nav-collected-badge').textContent = `${uniqueCount}/${CARD_DATABASE.length}`;
+    }
+
+    /* ============================================================================
+       5. BOOSTER PACK ARTWORK & SET SWITCHING
+       ============================================================================ */
+    function selectSet(setCode) {
+      if (state.isOpening) return;
+      state.currentSet = setCode;
+
+      const btn151 = document.getElementById('select-151');
+      const btnPaf = document.getElementById('select-paf');
+      const flap = document.getElementById('pack-flap');
+      const body = document.getElementById('pack-body');
+      const flapTag = document.getElementById('flap-tag');
+      const artBox = document.getElementById('pack-art-content');
+
+      if (setCode === '151') {
+        btn151.className = 'relative overflow-hidden rounded-xl p-3 text-left transition-all border-2 border-rose-500 bg-gradient-to-br from-white/10 to-rose-500/15 shadow-lg';
+        btnPaf.className = 'relative overflow-hidden rounded-xl p-3 text-left transition-all border-2 border-transparent hover:border-white/15 bg-white/[0.02]';
+
+        flap.className = 'pack-top-flap theme-151-flap';
+        body.className = 'pack-body theme-151-body flex flex-col justify-between';
+        flapTag.className = 'text-[10px] font-black tracking-widest uppercase text-rose-600';
+
+        artBox.innerHTML = `
+          <div class="w-full flex items-center justify-between">
+            <span class="px-2 py-0.5 rounded bg-rose-600 text-white text-[10px] font-black tracking-wider">SCARLET & VIOLET</span>
+            <span class="text-xs font-black text-slate-500">#151</span>
+          </div>
+
+          <!-- Iconic Kanto Trio + Mew Emblem -->
+          <div class="relative my-auto flex flex-col items-center">
+            <div class="w-36 h-36 rounded-full bg-gradient-to-tr from-rose-500 via-amber-400 to-sky-500 p-1 shadow-xl">
+              <div class="w-full h-full rounded-full bg-white flex flex-col items-center justify-center relative overflow-hidden">
+                <div class="absolute inset-0 opacity-15 bg-[radial-gradient(#ef4444_1px,transparent_1px)] [background-size:8px_8px]"></div>
+                <span class="text-5xl drop-shadow">🌸</span>
+                <div class="flex items-center gap-2 mt-1 text-lg">
+                  <span>🔥</span><span>💧</span><span>🌿</span>
+                </div>
+              </div>
+            </div>
+            <div class="mt-4 px-5 py-1.5 rounded-2xl bg-slate-900 text-white shadow-lg border-2 border-rose-500">
+              <span class="font-display font-black text-3xl tracking-tight bg-gradient-to-r from-rose-400 via-amber-300 to-sky-400 bg-clip-text text-transparent">151</span>
+            </div>
+          </div>
+
+          <div class="w-full text-center">
+            <div class="text-[10px] font-extrabold uppercase tracking-widest text-slate-600">Kanto Special Expansion</div>
+            <div class="text-[9px] text-slate-400 mt-0.5">10 Additional Game Cards</div>
+          </div>
+        `;
+      } else {
+        btnPaf.className = 'relative overflow-hidden rounded-xl p-3 text-left transition-all border-2 border-purple-500 bg-gradient-to-br from-purple-500/20 to-cyan-500/15 shadow-lg';
+        btn151.className = 'relative overflow-hidden rounded-xl p-3 text-left transition-all border-2 border-transparent hover:border-white/15 bg-white/[0.02]';
+
+        flap.className = 'pack-top-flap theme-paf-flap';
+        body.className = 'pack-body theme-paf-body flex flex-col justify-between';
+        flapTag.className = 'text-[10px] font-black tracking-widest uppercase text-cyan-300';
+
+        artBox.innerHTML = `
+          <div class="w-full flex items-center justify-between">
+            <span class="px-2 py-0.5 rounded bg-gradient-to-r from-purple-500 to-cyan-500 text-white text-[10px] font-black tracking-wider">SCARLET & VIOLET</span>
+            <span class="text-xs font-black text-purple-300">SHINY</span>
+          </div>
+
+          <!-- Shiny Charizard / Bubble Mew Iridescent Emblem -->
+          <div class="relative my-auto flex flex-col items-center">
+            <div class="w-36 h-36 rounded-full bg-gradient-to-tr from-fuchsia-500 via-cyan-300 to-amber-300 p-1 shadow-[0_0_30px_rgba(192,132,252,0.5)]">
+              <div class="w-full h-full rounded-full bg-[#13102b] flex flex-col items-center justify-center relative overflow-hidden">
+                <div class="text-xs text-cyan-300 font-black tracking-widest mb-0.5">✦ SHINY ✦</div>
+                <span class="text-5xl drop-shadow-[0_0_12px_rgba(255,255,255,0.6)]">🖤🔥</span>
+                <div class="flex items-center gap-2 mt-1 text-sm text-purple-200">
+                  <span>🫧</span><span>⚡</span><span>✨</span>
+                </div>
+              </div>
+            </div>
+            <div class="mt-4 px-4 py-1.5 rounded-2xl bg-black/60 backdrop-blur border border-cyan-400/50 shadow-lg text-center">
+              <div class="font-display font-black text-lg leading-tight bg-gradient-to-r from-cyan-300 via-white to-fuchsia-300 bg-clip-text text-transparent">
+                PALDEAN FATES
+              </div>
+            </div>
+          </div>
+
+          <div class="w-full text-center">
+            <div class="text-[10px] font-extrabold uppercase tracking-widest text-cyan-300">Shiny Vault Special Set</div>
+            <div class="text-[9px] text-purple-300/70 mt-0.5">10 Additional Game Cards</div>
+          </div>
+        `;
+      }
+    }
+
+    /* ============================================================================
+       6. PACK GENERATION LOGIC (AUTHENTIC SLOT PROBABILITIES + GOD PACKS)
+       ============================================================================ */
+    function pickRandom(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function generateBoosterPack(setCode) {
+      const pool = CARD_DATABASE.filter(c => c.set === setCode);
+      const commons = pool.filter(c => c.rarity === 'Common');
+      const uncommons = pool.filter(c => c.rarity === 'Uncommon');
+      const rareHolos = pool.filter(c => c.rarity === 'Rare Holo');
+      const doubleRares = pool.filter(c => c.rarity === 'Double Rare');
+      const ultraRares = pool.filter(c => c.rarity === 'Ultra Rare');
+      const shinyRares = pool.filter(c => c.rarity === 'Shiny Rare');
+      const irs = pool.filter(c => c.rarity === 'Illustration Rare');
+      const sirs = pool.filter(c => c.rarity === 'Special Illustration Rare');
+      const hypers = pool.filter(c => c.rarity === 'Hyper Rare');
+
+      const luckMultiplier = state.luckyMode ? 2.6 : 1;
+      const godPackChance = state.luckyMode ? 0.14 : 0.025; // ~1 in 40 standard, ~1 in 7 lucky
+      const isGodPack = Math.random() < godPackChance;
+
+      const packCards = [];
+
+      // Slots 1–4: Commons (unique within pack where possible)
+      const shuffledCommons = [...commons].sort(() => Math.random() - 0.5);
+      for (let i = 0; i < 4; i++) {
+        packCards.push({ ...shuffledCommons[i % shuffledCommons.length], isReverse: false });
+      }
+
+      // Slots 5–7: Uncommons
+      const shuffledUncommons = [...uncommons].sort(() => Math.random() - 0.5);
+      for (let i = 0; i < 3; i++) {
+        packCards.push({ ...shuffledUncommons[i % shuffledUncommons.length], isReverse: false });
+      }
+
+      if (isGodPack) {
+        // DEMI-GOD PACK!
+        if (setCode === '151') {
+          // Pick one of the iconic Kanto starter evolution lines (IR + IR + SIR)
+          const starterLines = [
+            ['151-166', '151-167', '151-198'], // Bulbasaur line
+            ['151-168', '151-169', '151-199'], // Charmander line
+            ['151-170', '151-171', '151-200']  // Squirtle line
+          ];
+          const chosenLine = pickRandom(starterLines);
+          chosenLine.forEach(cid => {
+            const card = pool.find(c => c.id === cid);
+            if (card) packCards.push({ ...card, isReverse: false });
+          });
+        } else {
+          // Paldean Fates God Pack: 2 Baby Shinies + 1 Top SIR!
+          packCards.push({ ...pickRandom(shinyRares), isReverse: false });
+          packCards.push({ ...pickRandom(shinyRares), isReverse: false });
+          packCards.push({ ...pickRandom(sirs), isReverse: false });
+        }
+      } else {
+        // Slot 8: Reverse Holo (Common / Uncommon / Rare Holo)
+        const revPool = [...commons, ...uncommons, ...rareHolos];
+        const rev1 = pickRandom(revPool);
+        packCards.push({ ...rev1, isReverse: true, displayRarity: 'Reverse Holo' });
+
+        // Slot 9: Reverse Holo OR Illustration Rare (151) / Baby Shiny (Paldean Fates)
+        const slot9Roll = Math.random();
+        if (setCode === 'paf' && shinyRares.length > 0 && slot9Roll < 0.28 * luckMultiplier) {
+          packCards.push({ ...pickRandom(shinyRares), isReverse: false });
+        } else if (setCode === '151' && irs.length > 0 && slot9Roll < 0.14 * luckMultiplier) {
+          packCards.push({ ...pickRandom(irs), isReverse: false });
+        } else {
+          const rev2 = pickRandom(revPool);
+          packCards.push({ ...rev2, isReverse: true, displayRarity: 'Reverse Holo' });
+        }
+
+        // Slot 10: Main Rare Hit Slot!
+        const roll = Math.random();
+        const hyperThresh = 0.025 * luckMultiplier;
+        const sirThresh = hyperThresh + (0.045 * luckMultiplier);
+        const irThresh = sirThresh + (setCode === '151' ? 0.08 * luckMultiplier : 0.05 * luckMultiplier);
+        const urThresh = irThresh + (ultraRares.length > 0 ? 0.08 * luckMultiplier : 0);
+        const drThresh = urThresh + (0.18 * luckMultiplier);
+
+        let slot10Card;
+        if (roll < hyperThresh && hypers.length > 0) {
+          slot10Card = pickRandom(hypers);
+        } else if (roll < sirThresh && sirs.length > 0) {
+          slot10Card = pickRandom(sirs);
+        } else if (roll < irThresh && irs.length > 0) {
+          slot10Card = pickRandom(irs);
+        } else if (roll < urThresh && ultraRares.length > 0) {
+          slot10Card = pickRandom(ultraRares);
+        } else if (roll < drThresh && doubleRares.length > 0) {
+          slot10Card = pickRandom(doubleRares);
+        } else {
+          slot10Card = pickRandom(rareHolos);
+        }
+        packCards.push({ ...slot10Card, isReverse: false });
+      }
+
+      // Slot 11: Basic Energy Card
+      const energy = pickRandom(BASIC_ENERGIES);
+      packCards.push({
+        id: `energy-${energy.type}`,
+        set: setCode,
+        num: 'SVE',
+        name: energy.name,
+        type: energy.type,
+        hp: null,
+        rarity: 'Common',
+        price: 0.05,
+        move: 'Basic Energy',
+        dmg: '',
+        glyph: energy.glyph,
+        isEnergy: true,
+        isReverse: false
+      });
+
+      return { cards: packCards, isGodPack };
+    }
+
+    /* ============================================================================
+       7. INTERACTIVE PACK RIPPING (SWIPE / DRAG OR CLICK)
+       ============================================================================ */
+    const tearZone = document.getElementById('tear-zone');
+    const tearProgress = document.getElementById('tear-progress');
+    const tearScissors = document.getElementById('tear-scissors');
+    const boosterPackEl = document.getElementById('booster-pack');
+
+    let isDraggingTear = false;
+    let dragStartX = 0;
+
+    function handleTearStart(clientX) {
+      if (state.isOpening) return;
+      isDraggingTear = true;
+      dragStartX = clientX;
+      boosterPackEl.classList.remove('animate-pack-idle');
+    }
+
+    function handleTearMove(clientX) {
+      if (!isDraggingTear || state.isOpening) return;
+      const rect = boosterPackEl.getBoundingClientRect();
+      const delta = Math.max(0, clientX - rect.left);
+      const pct = Math.min(100, (delta / rect.width) * 100);
+      tearProgress.style.width = `${pct}%`;
+      tearScissors.style.transform = `translateX(${Math.min(rect.width - 70, delta)}px)`;
+
+      if (pct >= 72) {
+        isDraggingTear = false;
+        triggerPackOpen();
+      }
+    }
+
+    function handleTearEnd() {
+      if (!isDraggingTear) return;
+      isDraggingTear = false;
+      tearProgress.style.width = '0%';
+      tearScissors.style.transform = 'translateX(0px)';
+      if (!state.isOpening) {
+        boosterPackEl.classList.add('animate-pack-idle');
+      }
+    }
+
+    tearZone.addEventListener('mousedown', e => handleTearStart(e.clientX));
+    window.addEventListener('mousemove', e => handleTearMove(e.clientX));
+    window.addEventListener('mouseup', handleTearEnd);
+
+    tearZone.addEventListener('touchstart', e => {
+      if (e.touches[0]) handleTearStart(e.touches[0].clientX);
+    }, { passive: true });
+    window.addEventListener('touchmove', e => {
+      if (e.touches[0]) handleTearMove(e.touches[0].clientX);
+    }, { passive: true });
+    window.addEventListener('touchend', handleTearEnd);
+
+    // Clicking the pack directly also rips it cleanly
+    boosterPackEl.addEventListener('click', () => {
+      if (!state.isOpening && !isDraggingTear) {
+        triggerPackOpen();
+      }
+    });
+
+    function triggerPackOpen() {
+      if (state.isOpening) return;
+      state.isOpening = true;
+
+      sfx.playRip();
+      tearProgress.style.width = '100%';
+
+      const rect = boosterPackEl.getBoundingClientRect();
+      spawnParticles(
+        rect.left + rect.width / 2,
+        rect.top + 68,
+        42,
+        state.currentSet === '151'
+          ? ['#f43f5e', '#facc15', '#38bdf8', '#ffffff']
+          : ['#c084fc', '#22d3ee', '#f472b6', '#fde047']
+      );
+
+      document.getElementById('pack-flap').classList.add('ripped');
+      setTimeout(() => {
+        document.getElementById('pack-body').classList.add('opened');
+      }, 160);
+
+      // Generate pack & update collection
+      const { cards, isGodPack } = generateBoosterPack(state.currentSet);
+      state.currentPack = cards;
+      state.flippedIndices = new Set();
+      state.packsOpened++;
+
+      let newlyDiscovered = 0;
+      cards.forEach(c => {
+        if (!c.isEnergy) {
+          if (!state.collection[c.id]) newlyDiscovered++;
+          state.collection[c.id] = (state.collection[c.id] || 0) + 1;
+        }
+      });
+      saveProgress();
+
+      // Transition to cards view
+      setTimeout(() => {
+        document.getElementById('pack-stage-container').classList.add('hidden');
+        document.getElementById('set-selector-bar').classList.add('hidden');
+
+        const cardsStage = document.getElementById('cards-stage-container');
+        cardsStage.classList.remove('hidden');
+        cardsStage.classList.add('flex');
+
+        document.getElementById('opened-set-badge').textContent =
+          state.currentSet === '151' ? 'SV: 151' : 'SV: PALDEAN FATES';
+
+        const godBanner = document.getElementById('god-pack-banner');
+        if (isGodPack) {
+          godBanner.classList.remove('hidden');
+          sfx.playHitFanfare('ultra');
+        } else {
+          godBanner.classList.add('hidden');
+        }
+
+        document.getElementById('pack-summary-bar').classList.add('hidden');
+        document.getElementById('pack-new-count').textContent = `+${newlyDiscovered}`;
+        renderPackCards();
+        state.isOpening = false;
+      }, 540);
+    }
+
+    function resetToNewPack() {
+      document.getElementById('cards-stage-container').classList.add('hidden');
+      document.getElementById('cards-stage-container').classList.remove('flex');
+
+      document.getElementById('set-selector-bar').classList.remove('hidden');
+      document.getElementById('pack-stage-container').classList.remove('hidden');
+
+      const flap = document.getElementById('pack-flap');
+      const body = document.getElementById('pack-body');
+      flap.classList.remove('ripped');
+      body.classList.remove('opened');
+      tearProgress.style.width = '0%';
+      tearScissors.style.transform = 'translateX(0px)';
+      boosterPackEl.classList.add('animate-pack-idle');
+    }
+
+    /* ============================================================================
+       8. CARD RENDERING, 3D FLIP & MOUSE-TRACKING HOLOGRAPHIC TILT
+       ============================================================================ */
+    function buildCardHTML(card, index, isFlipped = false, isInspect = false) {
+      const effectiveRarity = card.isReverse ? 'Reverse Holo' : card.rarity;
+      const rMeta = RARITY_META[effectiveRarity] || RARITY_META['Common'];
+      const tStyle = TYPE_STYLES[card.type] || TYPE_STYLES['Colorless'];
+      const hasHolo = Boolean(rMeta.holo);
+
+      const rarityBadgeColor =
+        rMeta.tier >= 8 ? 'bg-gradient-to-r from-pink-500 to-amber-400 text-slate-950' :
+        rMeta.tier === 7 ? 'bg-amber-400 text-slate-950' :
+        rMeta.tier === 6 ? 'bg-purple-400 text-slate-950' :
+        rMeta.tier >= 4 ? 'bg-sky-300 text-slate-950' :
+        card.isReverse ? 'bg-indigo-300 text-slate-950' :
+        'bg-slate-800/80 text-slate-200';
+
+      return `
+        <div class="tcg-card-slot ${isInspect ? '!max-w-none' : 'card-enter'}" style="${!isInspect ? `animation-delay: ${index * 40}ms` : ''}">
+          <div
+            class="tcg-card-inner ${isFlipped ? 'is-flipped' : ''} ${hasHolo ? 'has-holo' : ''}"
+            data-index="${index}"
+            onmousemove="handleCardTilt(event, this)"
+            onmouseleave="resetCardTilt(this)"
+            ontouchmove="handleCardTouchTilt(event, this)"
+            ontouchend="resetCardTilt(this)"
+            ${!isInspect ? `onclick="flipCard(${index}, event)"` : ''}
+          >
+            <!-- CARD BACK (POKEBALL) -->
+            <div class="tcg-card-face tcg-card-back">
+              <div class="relative z-10 flex flex-col items-center">
+                <div class="w-16 h-16 rounded-full border-4 border-white/90 bg-gradient-to-b from-rose-500 from-50% to-white to-50% shadow-lg flex items-center justify-center">
+                  <div class="w-5 h-5 rounded-full bg-white border-4 border-slate-800"></div>
+                </div>
+                <span class="mt-2 font-display font-black text-[10px] tracking-widest text-amber-300 drop-shadow">POKÉMON</span>
+              </div>
+            </div>
+
+            <!-- CARD FRONT -->
+            <div class="tcg-card-face tcg-card-front ${rMeta.border} bg-gradient-to-br ${tStyle.bg}">
+              <!-- Top Header: Name & HP -->
+              <div class="flex items-center justify-between px-1.5 py-0.5 bg-black/35 backdrop-blur-sm rounded-t-md">
+                <span class="font-display font-extrabold text-[11px] sm:text-xs text-white truncate pr-1">
+                  ${card.name}
+                </span>
+                <div class="flex items-center gap-1 shrink-0">
+                  ${card.hp ? `<span class="text-[10px] font-black text-amber-200">HP ${card.hp}</span>` : ''}
+                  <span class="text-xs">${tStyle.icon}</span>
+                </div>
+              </div>
+
+              <!-- Artwork Window -->
+              <div class="relative flex-1 my-1 rounded-md overflow-hidden border border-white/25 bg-black/30 flex flex-col items-center justify-center">
+                <!-- Subtle radial aura -->
+                <div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(255,255,255,0.28),transparent_70%)]"></div>
+
+                ${rMeta.tier >= 6 ? `
+                  <div class="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/60 border border-white/20 text-[8px] font-black uppercase tracking-wider text-amber-300">
+                    ${rMeta.tier >= 8 ? 'SIR ART' : rMeta.tier === 7 ? 'FULL ART IR' : 'SHINY'}
+                  </div>
+                ` : ''}
+
+                <div class="text-4xl sm:text-5xl drop-shadow-[0_6px_12px_rgba(0,0,0,0.5)] transform transition-transform duration-300">
+                  ${card.glyph}
+                </div>
+
+                ${card.isReverse ? `
+                  <span class="mt-1.5 px-2 py-0.5 rounded-full bg-white/20 backdrop-blur text-[8px] font-black uppercase tracking-widest text-white">
+                    Reverse Foil
+                  </span>
+                ` : ''}
+              </div>
+
+              <!-- Attack / Effect Strip -->
+              <div class="px-2 py-1.5 bg-black/45 backdrop-blur-sm rounded-md mb-1">
+                <div class="flex items-center justify-between text-[10px] font-bold text-white">
+                  <span class="truncate">${card.move}</span>
+                  <span class="text-amber-300 font-black ml-1">${card.dmg}</span>
+                </div>
+              </div>
+
+              <!-- Bottom Rarity, Set Number & Value -->
+              <div class="flex items-center justify-between px-1 text-[9px] font-bold">
+                <div class="flex items-center gap-1">
+                  <span class="px-1.5 py-0.2 rounded ${rarityBadgeColor} font-black">
+                    ${rMeta.symbol}
+                  </span>
+                  <span class="text-white/85">${card.num}</span>
+                </div>
+                <span class="text-emerald-300 font-extrabold">£${card.price.toFixed(2)}</span>
+              </div>
+
+              <!-- Holographic Foil & Specular Glare Layers -->
+              <div class="holo-layer ${rMeta.holo || ''}"></div>
+              <div class="glare-spot"></div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderPackCards() {
+      const grid = document.getElementById('cards-grid');
+      grid.innerHTML = state.currentPack
+        .map((card, idx) => buildCardHTML(card, idx, state.flippedIndices.has(idx), false))
+        .join('');
+
+      document.getElementById('total-pack-cards').textContent = state.currentPack.length;
+      document.getElementById('flipped-counter').textContent = state.flippedIndices.size;
+    }
+
+    function flipCard(index, event) {
+      const card = state.currentPack[index];
+      if (!card) return;
+
+      // If already flipped, open close-up inspector!
+      if (state.flippedIndices.has(index)) {
+        openInspectModal(card);
+        return;
+      }
+
+      state.flippedIndices.add(index);
+      const cardInner = document.querySelector(`.tcg-card-inner[data-index="${index}"]`);
+      if (cardInner) {
+        cardInner.classList.add('is-flipped');
+      }
+
+      const effectiveRarity = card.isReverse ? 'Reverse Holo' : card.rarity;
+      const tier = (RARITY_META[effectiveRarity] || RARITY_META['Common']).tier;
+
+      sfx.playFlip(tier >= 5);
+
+      if (tier >= 6) {
+        // Big Hit Celebration!
+        sfx.playHitFanfare(tier >= 8 ? 'ultra' : 'high');
+        if (cardInner) cardInner.classList.add('big-hit-pop');
+        const rect = cardInner ? cardInner.getBoundingClientRect() : { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0 };
+        spawnParticles(
+          rect.left + rect.width / 2,
+          rect.top + rect.height / 2,
+          tier >= 8 ? 55 : 30,
+          tier >= 8 ? ['#f43f5e', '#facc15', '#38bdf8', '#c084fc'] : ['#c084fc', '#fde047', '#ffffff']
+        );
+      }
+
+      updateFlipProgress();
+    }
+
+    function revealAllCards() {
+      state.currentPack.forEach((card, idx) => {
+        if (!state.flippedIndices.has(idx)) {
+          setTimeout(() => {
+            flipCard(idx);
+          }, idx * 55);
+        }
+      });
+    }
+
+    function updateFlipProgress() {
+      const flipped = state.flippedIndices.size;
+      const total = state.currentPack.length;
+      document.getElementById('flipped-counter').textContent = flipped;
+
+      if (flipped === total) {
+        document.getElementById('pack-status-title').textContent = 'All cards revealed! Tap any card to inspect.';
+        document.getElementById('btn-reveal-all').classList.add('hidden');
+
+        // Calculate Pack Summary
+        let packVal = 0;
+        let bestCard = state.currentPack[0];
+        state.currentPack.forEach(c => {
+          packVal += c.price;
+          if (c.price > bestCard.price) bestCard = c;
+        });
+
+        document.getElementById('pack-total-value').textContent = `£${packVal.toFixed(2)}`;
+        document.getElementById('pack-best-hit-text').textContent =
+          `Best Pull: ${bestCard.name} (${bestCard.isReverse ? 'Reverse Holo' : bestCard.rarity} • £${bestCard.price.toFixed(2)})`;
+        document.getElementById('pack-summary-bar').classList.remove('hidden');
+      } else {
+        document.getElementById('btn-reveal-all').classList.remove('hidden');
+      }
+    }
+
+    /* 3D Mouse & Touch Tilt Physics */
+    function applyTilt(el, clientX, clientY) {
+      if (!el.classList.contains('is-flipped')) return;
+      const rect = el.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      const px = Math.max(0, Math.min(100, (x / rect.width) * 100));
+      const py = Math.max(0, Math.min(100, (y / rect.height) * 100));
+
+      const rotateY = 180 + ((px - 50) / 50) * 16;
+      const rotateX = ((50 - py) / 50) * 16;
+
+      el.classList.add('tilting');
+      el.style.setProperty('--mx', `${px}%`);
+      el.style.setProperty('--my', `${py}%`);
+      el.style.transform = `rotateY(${rotateY}deg) rotateX(${rotateX}deg) scale(1.03)`;
+    }
+
+    function handleCardTilt(e, el) {
+      applyTilt(el, e.clientX, e.clientY);
+    }
+
+    function handleCardTouchTilt(e, el) {
+      if (e.touches && e.touches[0]) {
+        applyTilt(el, e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }
+
+    function resetCardTilt(el) {
+      el.classList.remove('tilting');
+      if (el.classList.contains('is-flipped')) {
+        el.style.transform = 'rotateY(180deg) rotateX(0deg) scale(1)';
+      } else {
+        el.style.transform = '';
+      }
+    }
+
+    /* ============================================================================
+       9. BINDER / COLLECTION VIEW & CARD INSPECTOR
+       ============================================================================ */
+    function switchView(view) {
+      const ripView = document.getElementById('view-rip');
+      const binderView = document.getElementById('view-binder');
+      const tabRip = document.getElementById('tab-rip');
+      const tabBinder = document.getElementById('tab-binder');
+
+      if (view === 'rip') {
+        ripView.classList.remove('hidden');
+        binderView.classList.add('hidden');
+        tabRip.className = 'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-gradient-to-r from-rose-500 to-indigo-600 text-white shadow';
+        tabBinder.className = 'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-400 hover:text-white flex items-center gap-1.5';
+      } else {
+        ripView.classList.add('hidden');
+        binderView.classList.remove('hidden');
+        tabBinder.className = 'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-gradient-to-r from-rose-500 to-indigo-600 text-white shadow flex items-center gap-1.5';
+        tabRip.className = 'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-400 hover:text-white';
+        renderBinder();
+      }
+    }
+
+    function setBinderFilter(setFilter) {
+      state.binderSetFilter = setFilter;
+      ['all', '151', 'paf'].forEach(key => {
+        const btn = document.getElementById(`filter-set-${key}`);
+        if (key === setFilter) {
+          btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-900';
+        } else {
+          btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 text-slate-300 hover:bg-white/10';
+        }
+      });
+      renderBinder();
+    }
+
+    function renderBinder() {
+      const rarityFilter = document.getElementById('binder-rarity-filter').value;
+      let cards = CARD_DATABASE.filter(c => {
+        if (state.binderSetFilter !== 'all' && c.set !== state.binderSetFilter) return false;
+        const owned = (state.collection[c.id] || 0) > 0;
+        const tier = (RARITY_META[c.rarity] || RARITY_META['Common']).tier;
+        if (rarityFilter === 'hits' && tier < 6) return false;
+        if (rarityFilter === 'owned' && !owned) return false;
+        if (rarityFilter === 'missing' && owned) return false;
+        return true;
+      });
+
+      // Overall completion metrics for active set filter
+      const scopeCards = CARD_DATABASE.filter(c => state.binderSetFilter === 'all' || c.set === state.binderSetFilter);
+      let ownedScope = 0;
+      let scopeValue = 0;
+      scopeCards.forEach(c => {
+        const q = state.collection[c.id] || 0;
+        if (q > 0) {
+          ownedScope++;
+          scopeValue += c.price * q;
+        }
+      });
+
+      const pct = scopeCards.length ? Math.round((ownedScope / scopeCards.length) * 100) : 0;
+      document.getElementById('binder-completion-text').textContent = `${ownedScope} / ${scopeCards.length} (${pct}%)`;
+      document.getElementById('binder-value-text').textContent = `£${scopeValue.toFixed(2)}`;
+      document.getElementById('binder-progress-bar').style.width = `${pct}%`;
+
+      const grid = document.getElementById('binder-grid');
+      if (cards.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full py-16 text-center text-slate-400">
+            <div class="text-4xl mb-2">📭</div>
+            <p class="font-semibold">No cards match this filter yet. Go rip some packs!</p>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = cards.map((card, idx) => {
+        const qty = state.collection[card.id] || 0;
+        if (qty > 0) {
+          return `
+            <div class="relative group cursor-pointer" onclick='openInspectModal(${JSON.stringify(card).replace(/'/g, "&#39;")})'>
+              ${buildCardHTML(card, idx, true, true)}
+              <div class="absolute -top-2 -right-2 z-30 px-2 py-0.5 rounded-full bg-slate-900 border border-white/20 text-[11px] font-black text-white shadow">
+                ×${qty}
+              </div>
+            </div>
+          `;
+        } else {
+          return `
+            <div class="aspect-[2.5/3.5] rounded-xl border-2 border-dashed border-white/10 bg-white/[0.02] p-3 flex flex-col items-center justify-center text-center opacity-60">
+              <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">${card.set.toUpperCase()} • ${card.num}</span>
+              <div class="text-2xl my-2 grayscale opacity-40">${card.glyph}</div>
+              <div class="text-xs font-bold text-slate-400">${card.name}</div>
+              <div class="text-[10px] text-slate-500 mt-0.5">${card.rarity}</div>
+            </div>
+          `;
+        }
+      }).join('');
+    }
+
+    /* Card Close-Up Inspector */
+    function openInspectModal(card) {
+      const modal = document.getElementById('inspect-modal');
+      const mount = document.getElementById('inspect-card-mount');
+      const effRarity = card.isReverse ? 'Reverse Holo' : card.rarity;
+
+      document.getElementById('inspect-rarity-pill').textContent = effRarity;
+      document.getElementById('inspect-card-name').textContent = card.name;
+      document.getElementById('inspect-card-meta').textContent =
+        `${card.set === '151' ? 'Scarlet & Violet—151' : 'Paldean Fates'} • #${card.num}`;
+      document.getElementById('inspect-card-price').textContent = `£${card.price.toFixed(2)}`;
+
+      mount.innerHTML = buildCardHTML(card, 0, true, true);
+      modal.classList.remove('hidden');
+    }
+
+    function closeInspectModal(e) {
+      if (!e || e.target.id === 'inspect-modal') {
+        document.getElementById('inspect-modal').classList.add('hidden');
+      }
+    }
+
+    /* ============================================================================
+       10. TOGGLES & RESET CONTROLS
+       ============================================================================ */
+    function toggleLuckyMode() {
+      state.luckyMode = !state.luckyMode;
+      const btn = document.getElementById('btn-lucky');
+      const label = document.getElementById('lucky-label');
+      if (state.luckyMode) {
+        btn.className = 'px-2.5 py-1.5 rounded-xl border border-amber-400/50 bg-amber-500/15 text-xs font-bold text-amber-300 transition flex items-center gap-1.5 shadow shadow-amber-500/10';
+        label.textContent = 'Lucky Charm ON';
+      } else {
+        btn.className = 'px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/10 text-xs font-semibold text-slate-300 transition flex items-center gap-1.5';
+        label.textContent = 'Standard Odds';
+      }
+    }
+
+    function toggleMute() {
+      sfx.muted = !sfx.muted;
+      document.getElementById('icon-sound-on').classList.toggle('hidden', sfx.muted);
+      document.getElementById('icon-sound-off').classList.toggle('hidden', !sfx.muted);
+    }
+
+    function openResetModal() {
+      document.getElementById('reset-modal').classList.remove('hidden');
+    }
+
+    function closeResetModal() {
+      document.getElementById('reset-modal').classList.add('hidden');
+    }
+
+    function confirmResetData() {
+      state.packsOpened = 0;
+      state.collection = {};
+      saveProgress();
+      renderBinder();
+      closeResetModal();
+    }
+
+    // Boot App
+    loadSaveData();
+    selectSet('151');
+  </script>
+</body>
+</html>
